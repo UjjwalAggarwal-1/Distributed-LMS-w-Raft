@@ -1,0 +1,4 @@
+# Ignore pycache, vscode, and venv files
+__pycache__/
+.vscode/
+.venv/

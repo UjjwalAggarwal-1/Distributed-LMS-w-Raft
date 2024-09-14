@@ -1,4 +1,8 @@
+import sys
+import os
 import grpc
+sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'proto'))
+
 import lms_pb2
 import lms_pb2_grpc
 
