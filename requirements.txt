@@ -1,0 +1,3 @@
+grpcio==1.44.0
+grpcio-tools==1.44.0
+mysql-connector-python==8.0.27

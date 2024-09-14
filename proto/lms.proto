@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+service LMS {
+    // RPCs for login and logout
+    rpc Login(LoginRequest) returns (LoginResponse);
+    rpc Logout(LogoutRequest) returns (LogoutResponse);
+    
+    // RPC for posting data (assignments, queries)
+    rpc Post(PostRequest) returns (PostResponse);
+    
+    // RPC for retrieving data
+    rpc Get(GetRequest) returns (GetResponse);
+}
+
+message LoginRequest {
+    string username = 1;
+    string password = 2;
+}
+
+message LoginResponse {
+    string status = 1;
+    string token = 2;
+}
+
+message LogoutRequest {
+    string token = 1;
+}
+
+message LogoutResponse {
+    string status = 1;
+}
+
+message PostRequest {
+    string token = 1;
+    string type = 2;
+    string data = 3;
+}
+
+message PostResponse {
+    string status = 1;
+}
+
+message GetRequest {
+    string token = 1;
+    string type = 2;
+}
+
+message GetResponse {
+    string status = 1;
+    repeated DataItem data_items = 2;
+}
+
+message DataItem {
+    string id = 1;
+    string content = 2;
+}
