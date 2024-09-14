@@ -69,32 +69,32 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             return lms_pb2.PostResponse(status="failure")
 
     def Get(self, request, context):
-        # Placeholder for get logic
         token = request.token
         request_type = request.type
 
         conn = db_connect()
         cursor = conn.cursor()
 
-        # Corrected for SQLite
-        cursor.execute(
-            "SELECT user_id FROM sessions WHERE token = ?", (token,))
+        cursor.execute("SELECT user_id FROM sessions WHERE token = ?", (token,))
         result = cursor.fetchone()
 
         if result:
             if request_type == "material":
-                cursor.execute(
-                    "SELECT material_id, title FROM course_materials")
+                # Fetch both title and content for course materials
+                cursor.execute("SELECT material_id, title, content FROM course_materials")
             else:
-                cursor.execute(
-                    "SELECT post_id, content FROM posts WHERE type = ?", (request_type,))
+                cursor.execute("SELECT post_id, content FROM posts WHERE type = ?", (request_type,))
 
             items = cursor.fetchall()
-            data_items = [lms_pb2.DataItem(
-                id=str(item[0]), content=item[1]) for item in items]
+            if request_type == "material":
+                data_items = [lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} - {item[2]}") for item in items]  # Combine title and content
+            else:
+                data_items = [lms_pb2.DataItem(id=str(item[0]), content=item[1]) for item in items]
+
             return lms_pb2.GetResponse(status="success", data_items=data_items)
         else:
             return lms_pb2.GetResponse(status="failure", data_items=[])
+
 
 
 def serve():

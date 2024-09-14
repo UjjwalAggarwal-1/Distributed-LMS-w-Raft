@@ -2,3 +2,5 @@
 __pycache__/
 .vscode/
 .venv/
+AOS-Adventure.zip
+lms_db.sqlite
