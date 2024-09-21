@@ -1,13 +1,15 @@
-
-import sys
 import os
-import grpc
+import sys
 import uuid
 from concurrent import futures
+
+import grpc
 from database import db_connect
-sys.path.append(os.path.join(os.path.dirname(__file__), '..', 'proto'))
-import lms_pb2_grpc
+
+sys.path.append(os.path.join(os.path.dirname(__file__), "..", "proto"))
 import lms_pb2
+import lms_pb2_grpc
+
 
 class LMSService(lms_pb2_grpc.LMSServicer):
 
@@ -16,8 +18,10 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         cursor = conn.cursor()
 
         # Validate username and password (Corrected for SQLite with `?`)
-        cursor.execute("SELECT user_id, role FROM users WHERE username = ? AND password = ?",
-                       (request.username, request.password))
+        cursor.execute(
+            "SELECT user_id, role FROM users WHERE username = ? AND password = ?",
+            (request.username, request.password),
+        )
         result = cursor.fetchone()
 
         if result:
@@ -25,7 +29,8 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             token = str(uuid.uuid4())  # Generate a session token
             # Corrected for SQLite
             cursor.execute(
-                "INSERT INTO sessions (user_id, token) VALUES (?, ?)", (user_id, token))
+                "INSERT INTO sessions (user_id, token) VALUES (?, ?)", (user_id, token)
+            )
             conn.commit()
             return lms_pb2.LoginResponse(status="success", token=token)
         else:
@@ -36,8 +41,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         cursor = conn.cursor()
 
         # Corrected for SQLite
-        cursor.execute("DELETE FROM sessions WHERE token = ?",
-                       (request.token,))
+        cursor.execute("DELETE FROM sessions WHERE token = ?", (request.token,))
         conn.commit()
 
         if cursor.rowcount > 0:
@@ -55,14 +59,15 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         conn = db_connect()
         cursor = conn.cursor()
 
-        cursor.execute(
-            "SELECT user_id FROM sessions WHERE token = ?", (token,))
+        cursor.execute("SELECT user_id FROM sessions WHERE token = ?", (token,))
         result = cursor.fetchone()
 
         if result:
             user_id = result[0]
-            cursor.execute("INSERT INTO posts (user_id, type, content) VALUES (?, ?, ?)",
-                           (user_id, post_type, content))  # Corrected for SQLite
+            cursor.execute(
+                "INSERT INTO posts (user_id, type, content) VALUES (?, ?, ?)",
+                (user_id, post_type, content),
+            )  # Corrected for SQLite
             conn.commit()
             return lms_pb2.PostResponse(status="success")
         else:
@@ -81,26 +86,34 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         if result:
             if request_type == "material":
                 # Fetch both title and content for course materials
-                cursor.execute("SELECT material_id, title, content FROM course_materials")
+                cursor.execute(
+                    "SELECT material_id, title, content FROM course_materials"
+                )
             else:
-                cursor.execute("SELECT post_id, content FROM posts WHERE type = ?", (request_type,))
+                cursor.execute(
+                    "SELECT post_id, content FROM posts WHERE type = ?", (request_type,)
+                )
 
             items = cursor.fetchall()
             if request_type == "material":
-                data_items = [lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} - {item[2]}") for item in items]  # Combine title and content
+                data_items = [
+                    lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} - {item[2]}")
+                    for item in items
+                ]  # Combine title and content
             else:
-                data_items = [lms_pb2.DataItem(id=str(item[0]), content=item[1]) for item in items]
+                data_items = [
+                    lms_pb2.DataItem(id=str(item[0]), content=item[1]) for item in items
+                ]
 
             return lms_pb2.GetResponse(status="success", data_items=data_items)
         else:
             return lms_pb2.GetResponse(status="failure", data_items=[])
 
 
-
 def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     lms_pb2_grpc.add_LMSServicer_to_server(LMSService(), server)
-    server.add_insecure_port('[::]:50051')
+    server.add_insecure_port("[::]:50051")
     server.start()
     print("LMS gRPC Server is running on port 50051")
     server.wait_for_termination()

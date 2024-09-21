@@ -4,3 +4,6 @@ __pycache__/
 .venv/
 AOS-Adventure.zip
 lms_db.sqlite
+venv/
+proto/lms_pb2_grpc.py
+proto/lms_pb2.py
