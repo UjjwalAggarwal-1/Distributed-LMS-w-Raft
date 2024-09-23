@@ -23,9 +23,9 @@ This is a basic Learning Management System (LMS) built using Python, gRPC, and S
 │
 ├── /server
 │   ├── grpc_server.py          # Main gRPC server code handling RPC functions
-│   ├── lms_server.py           # LMS service implementation with placeholder functions for post, get, etc.
-│   ├── database.py             # SQLite database connection and session management logic
-│   └── initialize_content.py   # Python script to initialize the LMS course content
+│   ├── server.py               # Code to run the grpc server
+│   ├── database.py             # SQLite database creation logic
+│   └── initialize_content.py   # Python script to initialize dummy the LMS course content
 │
 ├── /proto
 │   ├── lms.proto               # Protocol buffer file defining gRPC services and messages
@@ -87,14 +87,14 @@ python ./server/initialize_content.py
 This will also insert some dummy course materials into the SQLite database.
 
 
-## Run the Project
+## Running the Project
 
 ### 1. Run the gRPC Server
 
 Start the gRPC server by running the following command:
 
 ```bash
-python server/grpc_server.py
+python server/server.py
 ```
 
 The server will start listening for requests on port `50051`.
@@ -124,5 +124,3 @@ Once the client is running, you can:
 
 - Post assignments, course materials, and queries using the `post` option.
 - Retrieve course materials and assignments using the `get` option.
-
-

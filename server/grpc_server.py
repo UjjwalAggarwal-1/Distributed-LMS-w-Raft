@@ -1,9 +1,7 @@
 import os
 import sys
 import uuid
-from concurrent import futures
 
-import grpc
 from database import db_connect
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "proto"))
@@ -84,7 +82,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         result = cursor.fetchone()
 
         if result:
-            if request_type == "material":
+            if request_type == "course material":
                 # Fetch both title and content for course materials
                 cursor.execute(
                     "SELECT material_id, title, content FROM course_materials"
@@ -95,7 +93,8 @@ class LMSService(lms_pb2_grpc.LMSServicer):
                 )
 
             items = cursor.fetchall()
-            if request_type == "material":
+            
+            if request_type == "course material":
                 data_items = [
                     lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} - {item[2]}")
                     for item in items
@@ -108,16 +107,3 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             return lms_pb2.GetResponse(status="success", data_items=data_items)
         else:
             return lms_pb2.GetResponse(status="failure", data_items=[])
-
-
-def serve():
-    server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    lms_pb2_grpc.add_LMSServicer_to_server(LMSService(), server)
-    server.add_insecure_port("[::]:50051")
-    server.start()
-    print("LMS gRPC Server is running on port 50051")
-    server.wait_for_termination()
-
-
-if __name__ == "__main__":
-    serve()
