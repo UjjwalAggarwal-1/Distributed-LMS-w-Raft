@@ -99,7 +99,7 @@ def main():
                 for item in response.data_items:
                     print(f"ID: {item.id}, Content: {item.content}")
             else:
-                print("No data found or an error occurred.")
+                print("No data found.")
 
         elif choice == "3":
             # Logout process
@@ -117,6 +117,10 @@ def main():
 
         elif choice == "0":
             # Exit the program
+            try:
+                response = client.logout(token)
+            except Exception as e:
+                pass
             print("Exiting the system.")
             break
 
