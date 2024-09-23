@@ -1,7 +1,6 @@
 import os
 import sys
 import uuid
-
 from database import db_connect
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "proto"))

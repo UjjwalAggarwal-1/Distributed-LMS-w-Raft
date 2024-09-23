@@ -48,7 +48,9 @@ git clone https://github.com/UjjwalAggarwal-1/AOS-Adventure
 cd AOS-Adventure
 ```
 
+
 ### > Run the setup.sh bash file or Follow Steps 2 onwards
+* You may create a virtual env and activate it at this step
 
 ```
 ./setup.sh
@@ -60,6 +62,7 @@ chmod +x setup.sh
 ```
 
 ### 2. Install Python Dependencies
+* You may create a virtual env and activate it at this step
 
 Install the required Python dependencies using `pip`:
 
