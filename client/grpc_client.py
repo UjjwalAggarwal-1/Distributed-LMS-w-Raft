@@ -21,10 +21,29 @@ class LMSClient:
     def logout(self, token):
         return self.stub.Logout(lms_pb2.LogoutRequest(token=token))
 
-    def post(self, token, post_type, data):
-        return self.stub.Post(
-            lms_pb2.PostRequest(token=token, type=post_type, data=data)
-        )
+    def post(self, token, post_type, data, role, input_id):
+        print(1)
+        
+        if post_type == "assignment":
+            print(1)
+            if role == "student":
+                print(1)
+                return self.stub.PostAssignment(
+                    lms_pb2.PostAssignmentRequest(token=token, content=data, course_id = input_id)
+                )
+            elif role == "instructor":
+                return self.stub.PostAssignmentGrade(
+                    lms_pb2.PostAssignmentGradeRequest(token=token, grade=data, assignment_id = input_id)
+                )
+        elif post_type == "query":
+            if role == "student":
+                return self.stub.PostQuery(
+                    lms_pb2.PostQueryRequest(token=token, content=data, course_id = input_id)
+                )
+            elif role == "instructor":
+                return self.stub.PostQueryReply(
+                    lms_pb2.PostQueryReplyRequest(token=token, content=data, query_id = input_id)
+                )
 
     def get(self, token, request_type):
         return self.stub.Get(lms_pb2.GetRequest(token=token, type=request_type))

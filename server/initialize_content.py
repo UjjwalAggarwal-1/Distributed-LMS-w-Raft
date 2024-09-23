@@ -1,13 +1,13 @@
 import sqlite3
-
+from database import db_connect
 
 def initialize_course_content():
     # Connect to SQLite database (this will create the file if it doesn't exist)
-    conn = sqlite3.connect("lms_db.sqlite")
+    conn = db_connect()
     cursor = conn.cursor()
 
     # Check if there is already course content in the table
-    cursor.execute("SELECT COUNT(*) FROM course_materials")
+    cursor.execute("SELECT COUNT(*) FROM courses")
     material_count = cursor.fetchone()[0]
 
     if material_count == 0:
@@ -17,7 +17,7 @@ def initialize_course_content():
             ("Assignment 1", "Complete the following assignment and upload it."),
         ]
         cursor.executemany(
-            "INSERT INTO course_materials (title, content) VALUES (?, ?);",
+            "INSERT INTO courses (title, content) VALUES (?, ?);",
             course_materials,
         )
         conn.commit()

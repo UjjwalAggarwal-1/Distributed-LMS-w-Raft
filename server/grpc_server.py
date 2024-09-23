@@ -33,9 +33,43 @@ def authorize(func):
             # If token is invalid, return failure or raise a gRPC exception
             context.set_code(StatusCode.UNAUTHENTICATED)
             context.set_details("Invalid or expired token.")
+            # making it GetResponse for now, not sure if need to seperate out
             return lms_pb2.GetResponse(status="failure")
 
     return wrapper
+
+def authorize_role(required_role):
+    def decorator(func):
+        @wraps(func)
+        def wrapper(self, request, context, *args, **kwargs):
+            # First authorize to get user_id
+            response = authorize(func)(self, request, context, *args, **kwargs)
+            
+            # If the response is a failure, return it
+            if isinstance(response, lms_pb2.GetResponse) and response.status == "failure":
+                return response
+
+            user_id = kwargs.get('user_id')
+
+            # Connect to the database and check if the user has the required role
+            conn = db_connect()
+            cursor = conn.cursor()
+            cursor.execute(
+                "SELECT role FROM users WHERE user_id = ?", (user_id,)
+            )
+            result = cursor.fetchone()
+
+            if result and result[0] == required_role:
+                # If user has the required role, proceed to the original function
+                return func(self, request, context, user_id=user_id, *args, **kwargs)
+            else:
+                # If user does not have the required role, return unauthorized
+                context.set_code(StatusCode.PERMISSION_DENIED)
+                context.set_details(f"User does not have the required role: {required_role}.")
+                return lms_pb2.GetResponse(status="failure")
+
+        return wrapper
+    return decorator
 
 
 class LMSService(lms_pb2_grpc.LMSServicer):
@@ -59,10 +93,11 @@ class LMSService(lms_pb2_grpc.LMSServicer):
                 "INSERT INTO sessions (user_id, token) VALUES (?, ?)", (user_id, token)
             )
             conn.commit()
-            return lms_pb2.LoginResponse(status="success", token=token)
+            return lms_pb2.LoginResponse(status="success", token=token, role = role)
         else:
-            return lms_pb2.LoginResponse(status="failure", token="")
+            return lms_pb2.LoginResponse(status="failure")
 
+    @authorize
     def Logout(self, request, context):
         conn = db_connect()
         cursor = conn.cursor()
@@ -70,26 +105,105 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         # Corrected for SQLite
         cursor.execute("DELETE FROM sessions WHERE token = ?", (request.token,))
         conn.commit()
+        cursor.close()
+        conn.close()
 
         if cursor.rowcount > 0:
             return lms_pb2.LogoutResponse(status="success")
         else:
             return lms_pb2.LogoutResponse(status="failure")
 
-    @authorize
-    def Post(self, request, context, user_id=None):
-        post_type = request.type
+    @authorize_role("student")
+    def PostAssignment(self, request, context, user_id=None):
+
         content = request.data
+        course_id = request.course_id
 
         # Save the post in the database
         conn = db_connect()
         cursor = conn.cursor()
+
         cursor.execute(
-            "INSERT INTO posts (user_id, type, content) VALUES (?, ?, ?)",
-            (user_id, post_type, content),
+            """
+            INSERT INTO assignments (user_id, course_id, content)
+            VALUES (?, ?, ?)
+            """,
+            (user_id, course_id, content),
         )
+
         conn.commit()
+        cursor.close()
+        conn.close()
         return lms_pb2.PostResponse(status="success")
+
+    @authorize_role("instructor")
+    def PostAssignmentGrade(self, request, context, user_id=None):
+
+        grade = request.data
+        assignment_id = request.course_id
+
+        # Save the post in the database
+        conn = db_connect()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            UPDATE assignments set grade=? where assignment_id=?
+            """,
+            (grade, assignment_id),
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return lms_pb2.PostResponse(status="success")
+
+    @authorize_role("student")
+    def PostQuery(self, request, context, user_id=None):
+
+        content = request.data
+        course_id = request.course_id
+
+        # Save the post in the database
+        conn = db_connect()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            INSERT INTO queries (user_id, course_id, content)
+            VALUES (?, ?, ?)
+            """,
+            (user_id, course_id, content),
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return lms_pb2.PostResponse(status="success")
+
+    @authorize_role("instructor")
+    def PostQueryResponse(self, request, context, user_id=None):
+
+        reply = request.data
+        query_id = request.course_id
+
+        # Save the post in the database
+        conn = db_connect()
+        cursor = conn.cursor()
+
+        cursor.execute(
+            """
+            UPDATE queries set replier_id=?, reply=?, replied_at=CURRENT_TIMESTAMP
+            WHERE query_id = ?
+            """,
+            (user_id, reply, query_id),
+        )
+
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return lms_pb2.PostResponse(status="success")
+
 
     @authorize
     def Get(self, request, context, user_id=None):
@@ -100,7 +214,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
 
         # Fetch course materials or posts based on request_type
         if request_type == "course material":
-            cursor.execute("SELECT material_id, title, content FROM course_materials")
+            cursor.execute("SELECT course_id, title, content FROM courses")
         elif request_type in ["assignment", "query"]:
             cursor.execute(
                 "SELECT post_id, content FROM posts WHERE type = ?", (request_type,)

@@ -5,8 +5,11 @@ service LMS {
     rpc Login(LoginRequest) returns (LoginResponse);
     rpc Logout(LogoutRequest) returns (LogoutResponse);
     
-    // RPC for posting data (assignments, queries)
-    rpc Post(PostRequest) returns (PostResponse);
+    // RPCs for posting data (assignments, queries)
+    rpc PostAssignment(PostAssignmentRequest) returns (PostResponse);
+    rpc PostAssignmentGrade(PostAssignmentGradeRequest) returns (PostResponse);
+    rpc PostQuery(PostQueryRequest) returns (PostResponse);
+    rpc PostQueryReply(PostQueryReplyRequest) returns (PostResponse);
     
     // RPC for retrieving data
     rpc Get(GetRequest) returns (GetResponse);
@@ -20,6 +23,7 @@ message LoginRequest {
 message LoginResponse {
     string status = 1;
     string token = 2;
+    string role = 3;
 }
 
 message LogoutRequest {
@@ -30,10 +34,28 @@ message LogoutResponse {
     string status = 1;
 }
 
-message PostRequest {
+message PostAssignmentRequest {
     string token = 1;
-    string type = 2;
-    string data = 3;
+    string content = 2;
+    int32 course_id = 3;
+}
+
+message PostAssignmentGradeRequest {
+    string token = 1;
+    string grade = 2;
+    int32 assignment_id = 3;
+}
+
+message PostQueryRequest {
+    string token = 1;
+    string content = 2;
+    int32 course_id = 3;
+}
+
+message PostQueryReplyRequest {
+    string token = 1;
+    string content = 2;
+    int32 query_id = 3;
 }
 
 message PostResponse {

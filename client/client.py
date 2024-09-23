@@ -22,15 +22,26 @@ def input_choice(options):
     return choice
 
 
-def post_menu():
+def post_menu(role):
     """Handles post type input and validation."""
     print("\nPost Types:")
     print("1. Assignment")
     print("2. Query")
+
     post_choice = input_choice(["1", "2"])
+    
+    if role=="student":
+        input_id = int(input("Enter Course ID: "))
+    elif post_choice == "1":
+        input_id = int(input("Enter Assignment ID: "))
+    else :
+        input_id = int(input("Enter Query ID: "))
+    
     post_type = "assignment" if post_choice == "1" else "query"
+
     content = input("Enter the content: ")
-    return post_type, content
+    
+    return post_type, content, input_id
 
 
 def get_menu():
@@ -47,10 +58,24 @@ def get_menu():
     return get_type
 
 
+def handle_exception(e):
+    print("\nSome Error Occured :")
+    try:
+        print(e.code())
+    except:
+        pass
+    try:
+        print(e.details())
+    except:
+        print("Error Details not found!")
+
+    print(e)
+
 def main():
     client = LMSClient()
     logged_in = False
-    token = None
+    token = ""
+    role = ""
 
     while True:
         display_menu(logged_in)
@@ -59,32 +84,39 @@ def main():
         else:
             choice = input_choice(["1", "0"])
 
+
         if choice == "1":
             if not logged_in:
                 # Login process
                 username = input("Username: ")
                 password = input("Password: ")
                 try:
-                    response = client.login(username, password)
+                    response = client.login("student1", "password123")
                 except Exception as e:
-                    print(e)
+                    handle_exception(e)
                     break
                 if response.status == "success":
                     token = response.token
                     logged_in = True
-                    print(f"Login successful! Token: {token}")
+                    role = response.role
+                    print(f"Login successful as {role}! \nToken: {token}")
                 else:
                     print("Login failed. Please check your credentials and try again.")
 
             else:
                 # Post data
-                post_type, content = post_menu()
+                post_type, content, input_id = post_menu(role)
+
                 try:
-                    response = client.post(token, post_type, content)
+                    response = client.post(
+                        token, post_type=post_type, data=content, role=role, input_id=input_id
+                    )
+
                 except Exception as e:
-                    print(e)
+                    handle_exception(e)
                     break
                 print(f"Post Status: {response.status}")
+
 
         elif choice == "2":
             # Get data
@@ -92,7 +124,7 @@ def main():
             try:
                 response = client.get(token, get_type)
             except Exception as e:
-                print(e)
+                handle_exception(e)
                 break
             if response.status == "success" and response.data_items:
                 print(f"\n--- {get_type.capitalize()} Data ---")
@@ -101,12 +133,13 @@ def main():
             else:
                 print("No data found.")
 
+
         elif choice == "3":
             # Logout process
             try:
                 response = client.logout(token)
             except Exception as e:
-                print(e)
+                handle_exception(e)
                 break
             if response.status == "success":
                 logged_in = False
@@ -114,6 +147,7 @@ def main():
                 print("Logout successful.")
             else:
                 print("Logout failed.")
+
 
         elif choice == "0":
             # Exit the program
