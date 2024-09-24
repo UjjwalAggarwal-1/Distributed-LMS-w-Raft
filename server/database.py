@@ -10,6 +10,7 @@ def db_connect():
 
 def create_tables():
     conn = db_connect()
+    conn.execute("PRAGMA foreign_keys = ON;")
     cursor = conn.cursor()
 
     # Create users table

@@ -15,7 +15,10 @@ def serve():
     server.add_insecure_port("[::]:50051")
     server.start()
     print("LMS gRPC Server is running on port 50051")
-    server.wait_for_termination()
+    try:
+        server.wait_for_termination()
+    except KeyboardInterrupt:
+        server.stop(0)
 
 
 if __name__ == "__main__":

@@ -17,6 +17,9 @@ python -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./p
 echo ""
 echo "Initializing database content..."
 echo ""
+
+rm lms_db.sqlite
+
 python3 ./server/database.py ||
 python ./server/database.py ||
 { echo "Failed to setup database"; exit 1; }

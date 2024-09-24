@@ -22,12 +22,9 @@ class LMSClient:
         return self.stub.Logout(lms_pb2.LogoutRequest(token=token))
 
     def post(self, token, post_type, data, role, input_id):
-        print(1)
         
         if post_type == "assignment":
-            print(1)
             if role == "student":
-                print(1)
                 return self.stub.PostAssignment(
                     lms_pb2.PostAssignmentRequest(token=token, content=data, course_id = input_id)
                 )
