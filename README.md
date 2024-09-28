@@ -28,9 +28,12 @@ This is a basic Learning Management System (LMS) built using Python, gRPC, and S
 │   └── initialize_content.py   # Python script to initialize dummy the LMS course content
 │
 ├── /proto
-│   ├── lms.proto               # Protocol buffer file defining gRPC services and messages
-│   └── lms_pb2.py              # Auto-generated Python gRPC class (generated using `protoc`)
-│   └── lms_pb2_grpc.py         # Auto-generated gRPC server and client classes (generated using `protoc`)
+│   ├── lms.proto               # Protocol buffer file defining gRPC services and messages b/w Server and Client
+│   └── tutoring.proto          # Protocol buffer file defining gRPC services and messages b/w Server and LLM
+│   └── lms_pb2.py              # Auto-generated (at setup) Python gRPC class
+│   └── lms_pb2_grpc.py         # Auto-generated (at setup) gRPC server and client classes
+│   └── tutoring_pb2.py         # Auto-generated (at setup) Python gRPC class
+│   └── tutoring_pb2_grpc.py    # Auto-generated (at setup) gRPC server and client classes
 │
 └── requirements.txt            # Python dependencies for the project (gRPC, SQLite, etc.)
 ```
@@ -81,7 +84,7 @@ Install the required Python dependencies using `pip`:
 pip install -r requirements.txt
 ```
 
-### 3. Generate gRPC Code from `lms.proto`
+### 3. Generate gRPC Code from `lms.proto` and `tutoring.proto`
 
 The project uses gRPC for communication. To generate the necessary Python files from the `lms.proto` file, run the following command:
 
@@ -90,6 +93,11 @@ python -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./p
 ```
 
 This will generate `lms_pb2.py` and `lms_pb2_grpc.py` inside the `/proto` directory.
+
+similarly for `tutoroing.proto`
+```bash
+python -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./proto ./proto/tutoring.proto
+```
 
 ### 4. Initialize Database Content
 
@@ -126,9 +134,17 @@ In a separate terminal, run the client to interact with the LMS:
 python client/client.py
 ```
 
+### 3. Run the Tutoring Server
+
+In a separate terminal, run the client to interact with the LMS:
+
+```bash
+python tutoring_server/tutoring_server.py
+```
+
 The client will provide options for login, posting data, retrieving data, and logging out.
 
-### 3. Using the LMS
+### 4. Using the LMS
 
 Once the client is running, you can:
 - Login using the following credentials:
