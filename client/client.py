@@ -1,4 +1,5 @@
 from grpc_client import LMSClient
+from getpass import getpass
 
 
 def display_menu(logged_in):
@@ -96,7 +97,7 @@ def main():
             if not logged_in:
                 # Login process
                 username = input("Username: ")
-                password = input("Password: ")
+                password = getpass("Password: ")
                 try:
                     response = client.login(username, password)
                 except Exception as e:
