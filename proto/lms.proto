@@ -65,6 +65,7 @@ message PostResponse {
 message GetRequest {
     string token = 1;
     string type = 2;
+    int32 course_id = 3;
 }
 
 message GetResponse {

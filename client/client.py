@@ -25,21 +25,26 @@ def input_choice(options):
 def post_menu(role):
     """Handles post type input and validation."""
     print("\nPost Types:")
-    print("1. Assignment")
-    print("2. Query")
+    if role=="student":
+        print("1. Assignment")
+        print("2. Query")
+    elif role=="instructor":
+        print("1. Assignment Grade")
+        print("2. Query Response")
 
     post_choice = input_choice(["1", "2"])
     
     if role=="student":
         input_id = int(input("Enter Course ID: "))
+        content = input("Enter the content: ")
     elif post_choice == "1":
         input_id = int(input("Enter Assignment ID: "))
+        content = input("Enter the Grade: ")
     else :
         input_id = int(input("Enter Query ID: "))
+        content = input("Enter the Response: ")
     
     post_type = "assignment" if post_choice == "1" else "query"
-
-    content = input("Enter the content: ")
     
     return post_type, content, input_id
 
@@ -55,7 +60,9 @@ def get_menu():
     get_choice = input_choice(choice_map.keys())
     get_type = choice_map.get(get_choice).lower()
 
-    return get_type
+    course_id = int(input("Enter Course ID: "))
+
+    return get_type, course_id
 
 
 def handle_exception(e):
@@ -91,7 +98,7 @@ def main():
                 username = input("Username: ")
                 password = input("Password: ")
                 try:
-                    response = client.login("student1", "password123")
+                    response = client.login(username, password)
                 except Exception as e:
                     handle_exception(e)
                     break
@@ -120,9 +127,9 @@ def main():
 
         elif choice == "2":
             # Get data
-            get_type = get_menu()
+            get_type, course_id = get_menu()
             try:
-                response = client.get(token, get_type)
+                response = client.get(token, get_type, course_id)
             except Exception as e:
                 handle_exception(e)
                 break

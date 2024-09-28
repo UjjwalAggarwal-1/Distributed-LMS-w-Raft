@@ -42,5 +42,5 @@ class LMSClient:
                     lms_pb2.PostQueryReplyRequest(token=token, content=data, query_id = input_id)
                 )
 
-    def get(self, token, request_type):
-        return self.stub.Get(lms_pb2.GetRequest(token=token, type=request_type))
+    def get(self, token, request_type, course_id):
+        return self.stub.Get(lms_pb2.GetRequest(token=token, type=request_type, course_id=course_id))

@@ -134,7 +134,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             return lms_pb2.LoginResponse(status="failure")
 
     @authorize
-    def Logout(self, request, context):
+    def Logout(self, request, context, *args, **kwargs):
         conn = db_connect()
         cursor = conn.cursor()
 
@@ -167,8 +167,8 @@ class LMSService(lms_pb2_grpc.LMSServicer):
     @authorize_role("instructor")
     def PostAssignmentGrade(self, request, context, user_id=None):
 
-        grade = request.content
-        assignment_id = request.course_id
+        grade = request.grade
+        assignment_id = request.assignment_id
 
         # Save the post in the database
         res = db_execute(
@@ -204,10 +204,10 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         return lms_pb2.PostResponse(status="success")
 
     @authorize_role("instructor")
-    def PostQueryResponse(self, request, context, user_id=None):
+    def PostQueryReply(self, request, context, user_id=None):
 
         reply = request.content
-        query_id = request.course_id
+        query_id = request.query_id
 
         # Save the post in the database
         conn = db_connect()
@@ -226,24 +226,26 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         conn.close()
         return lms_pb2.PostResponse(status="success")
 
-
     @authorize
     def Get(self, request, context, user_id=None):
         request_type = request.type
+        course_id = request.course_id
 
         conn = db_connect()
         cursor = conn.cursor()
 
         # Fetch course materials or posts based on request_type
         if request_type == "course material":
-            cursor.execute("SELECT course_id, title, content FROM courses")
+            cursor.execute("SELECT course_id, title, content FROM courses where course_id = ?", (course_id,))
         elif request_type == "assignment":
             cursor.execute(
-                "SELECT assignment_id, content FROM assignments"
+                "SELECT assignment_id, user_id, content, grade FROM assignments where course_id = ?",
+                (course_id,),
             )
         elif request_type == "query":
             cursor.execute(
-                "SELECT query_id, content FROM queries"
+                "SELECT query_id, user_id, content, reply, replier_id FROM queries where course_id = ?",
+                (course_id,),
             )
         else:
             lms_pb2.GetResponse(status="failure")
@@ -256,9 +258,13 @@ class LMSService(lms_pb2_grpc.LMSServicer):
                 lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} - {item[2]}")
                 for item in items
             )  # Combine title and content
+        elif request_type == "query":
+            data_items = (
+                lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} asked {item[2]} and got {item[3]} from {item[4]}") for item in items
+            )
         else:
             data_items = (
-                lms_pb2.DataItem(id=str(item[0]), content=item[1]) for item in items
+                lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} submitted {item[2]} and got {item[3]}") for item in items
             )
 
         return lms_pb2.GetResponse(status="success", data_items=data_items)
