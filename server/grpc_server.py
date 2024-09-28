@@ -185,6 +185,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
 
         content = request.content
         course_id = request.course_id
+        is_ai = request.is_ai
 
         # Save the post in the database
         conn = db_connect()

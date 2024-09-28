@@ -50,6 +50,7 @@ message PostQueryRequest {
     string token = 1;
     string content = 2;
     int32 course_id = 3;
+    bool is_ai = 4;
 }
 
 message PostQueryReplyRequest {

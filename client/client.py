@@ -29,11 +29,12 @@ def post_menu(role):
     if role=="student":
         print("1. Assignment")
         print("2. Query")
+        print("3. Query to AI")
+        post_choice = input_choice(["1", "2", "3"])
     elif role=="instructor":
         print("1. Assignment Grade")
         print("2. Query Response")
-
-    post_choice = input_choice(["1", "2"])
+        post_choice = input_choice(["1", "2"])
     
     if role=="student":
         input_id = int(input("Enter Course ID: "))
@@ -45,7 +46,7 @@ def post_menu(role):
         input_id = int(input("Enter Query ID: "))
         content = input("Enter the Response: ")
     
-    post_type = "assignment" if post_choice == "1" else "query"
+    post_type = "assignment" if post_choice == "1" else "query" if post_choice == "2" else "ai_query"
     
     return post_type, content, input_id
 

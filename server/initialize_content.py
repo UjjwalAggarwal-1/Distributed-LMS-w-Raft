@@ -42,6 +42,7 @@ def initialize_course_content():
             ("student3", "password123", "student"),
             ("student4", "password123", "student"),
             ("student5", "password123", "student"),
+            ("LLM", "234ad$sf23!4adf34", "LLM"),
         ]
         cursor.executemany(
             "INSERT INTO users (username, password, role) VALUES (?, ?, ?);", users
