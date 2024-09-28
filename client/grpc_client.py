@@ -35,12 +35,16 @@ class LMSClient:
         elif post_type == "query":
             if role == "student":
                 return self.stub.PostQuery(
-                    lms_pb2.PostQueryRequest(token=token, content=data, course_id = input_id)
+                    lms_pb2.PostQueryRequest(token=token, content=data, course_id = input_id, is_ai = False)
                 )
             elif role == "instructor":
                 return self.stub.PostQueryReply(
                     lms_pb2.PostQueryReplyRequest(token=token, content=data, query_id = input_id)
                 )
+        elif post_type == "ai_query":
+            return self.stub.PostQuery(
+                lms_pb2.PostQueryRequest(token=token, content=data, course_id = input_id, is_ai=True)
+            )
 
     def get(self, token, request_type, course_id):
         return self.stub.Get(lms_pb2.GetRequest(token=token, type=request_type, course_id=course_id))
