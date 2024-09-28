@@ -7,3 +7,5 @@ lms_db.sqlite
 venv/
 proto/lms_pb2_grpc.py
 proto/lms_pb2.py
+proto/tutoring_pb2_grpc.py
+proto/tutoring_pb2.py

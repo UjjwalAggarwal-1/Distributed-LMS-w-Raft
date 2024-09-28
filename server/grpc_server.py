@@ -232,7 +232,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         if is_ai:
 
             cursor.execute(
-                "SELECT user_id, role FROM users WHERE username = LLM"
+                "SELECT user_id FROM users WHERE username = 'LLM'"
             )
             llm_id = cursor.fetchone()
             # Call the Tutoring Server with the course name and query
@@ -262,7 +262,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         cursor.close()
         conn.close()
 
-        return lms_pb2.PostResponse(status="success")
+        return lms_pb2.PostResponse(status="success", content=ai_response if is_ai else None)
 
 
     @authorize_role("instructor")

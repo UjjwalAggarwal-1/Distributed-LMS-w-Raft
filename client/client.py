@@ -26,28 +26,28 @@ def input_choice(options):
 def post_menu(role):
     """Handles post type input and validation."""
     print("\nPost Types:")
-    if role=="student":
+    if role == "student":
         print("1. Assignment")
         print("2. Query")
         print("3. Query to AI")
         post_choice = input_choice(["1", "2", "3"])
-    elif role=="instructor":
+    elif role == "instructor":
         print("1. Assignment Grade")
         print("2. Query Response")
         post_choice = input_choice(["1", "2"])
-    
-    if role=="student":
+
+    if role == "student":
         input_id = int(input("Enter Course ID: "))
         content = input("Enter the content: ")
     elif post_choice == "1":
         input_id = int(input("Enter Assignment ID: "))
         content = input("Enter the Grade: ")
-    else :
+    else:
         input_id = int(input("Enter Query ID: "))
         content = input("Enter the Response: ")
-    
+
     post_type = "assignment" if post_choice == "1" else "query" if post_choice == "2" else "ai_query"
-    
+
     return post_type, content, input_id
 
 
@@ -80,6 +80,7 @@ def handle_exception(e):
 
     print(e)
 
+
 def main():
     client = LMSClient()
     logged_in = False
@@ -92,7 +93,6 @@ def main():
             choice = input_choice(["1", "2", "3", "0"])
         else:
             choice = input_choice(["1", "0"])
-
 
         if choice == "1":
             if not logged_in:
@@ -115,6 +115,8 @@ def main():
             else:
                 # Post data
                 post_type, content, input_id = post_menu(role)
+                if post_type == "ai_query":
+                    print("Waiting for AI response...")
 
                 try:
                     response = client.post(
@@ -123,8 +125,9 @@ def main():
 
                 except Exception as e:
                     handle_exception(e)
+                if post_type == "ai_query":
+                    print(f"AI Response: {response.content}")
                 print(f"Post Status: {response.status}")
-
 
         elif choice == "2":
             # Get data
@@ -141,7 +144,6 @@ def main():
             else:
                 print("No data found.")
 
-
         elif choice == "3":
             # Logout process
             try:
@@ -155,7 +157,6 @@ def main():
                 print("Logout successful.")
             else:
                 print("Logout failed.")
-
 
         elif choice == "0":
             # Exit the program

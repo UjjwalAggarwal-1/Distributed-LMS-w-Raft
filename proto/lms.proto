@@ -61,6 +61,7 @@ message PostQueryReplyRequest {
 
 message PostResponse {
     string status = 1;
+    string content=2;
 }
 
 message GetRequest {
