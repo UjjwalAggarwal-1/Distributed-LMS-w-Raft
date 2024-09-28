@@ -10,7 +10,7 @@ This is a basic Learning Management System (LMS) built using Python, gRPC, and S
 - [Project Structure](#project-structure)
 - [Requirements](#requirements)
 - [Setup Instructions](#setup-instructions)
-- [Run the Project](#run-the-project)
+- [Run the Project](#running-the-project)
 
 ## Project Structure
 
@@ -42,6 +42,8 @@ This is a basic Learning Management System (LMS) built using Python, gRPC, and S
 
 ## Setup Instructions
 
+## With Setup file
+
 ### 1. Clone the repository
 ```bash
 git clone https://github.com/UjjwalAggarwal-1/AOS-Adventure
@@ -49,8 +51,8 @@ cd AOS-Adventure
 ```
 
 
-### > Run the setup.sh bash file or Follow Steps 2 onwards
-* You may create a virtual env and activate it at this step
+### 2. Run the setup.sh bash file
+* You may create a virtual env and activate it now
 
 ```
 ./setup.sh
@@ -60,6 +62,15 @@ incase the file is not executable, run
 ```
 chmod +x setup.sh
 ```
+
+## Without Setup file
+
+### 1. Clone the repository
+```bash
+git clone https://github.com/UjjwalAggarwal-1/AOS-Adventure
+cd AOS-Adventure
+```
+
 
 ### 2. Install Python Dependencies
 * You may create a virtual env and activate it at this step
@@ -125,5 +136,5 @@ Once the client is running, you can:
     - student1/student2/student3/student4/student5 for student
   - password: password123 for all
 
-- Post assignments, course materials, and queries using the `post` option.
-- Retrieve course materials and assignments using the `get` option.
+- Using the `post` option : Post assignments, and queries as student, or grade assignments and reply to queries as instructors.
+- Using the `get` option : Retrieve course materials and assignments, their grades, and queries and replies.
