@@ -13,8 +13,10 @@ def initialize_course_content():
     if material_count == 0:
         # Insert initial course materials
         course_materials = [
-            ("Course Syllabus", "This is the syllabus for the course."),
-            ("Assignment 1", "Complete the following assignment and upload it."),
+            ("Advanced Operating Systems", "This is the syllabus for the course."),
+            ("Operating Systems", "Read the following modules and understand it all."),
+            ("Advanced Computer Networks", "This is the syllabus for the course. Read the following information."),
+            ("Computer Networks", "Read the following modules and understand it all."),
         ]
         cursor.executemany(
             "INSERT INTO courses (title, content) VALUES (?, ?);",
