@@ -123,7 +123,6 @@ def main():
 
                 except Exception as e:
                     handle_exception(e)
-                    break
                 print(f"Post Status: {response.status}")
 
 

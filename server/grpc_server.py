@@ -1,16 +1,19 @@
+
+from grpc import StatusCode
+import grpc
 import os
 import sqlite3
 import sys
 import uuid
 from functools import wraps
-
 from database import db_connect
-
+from concurrent import futures
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "proto"))
-import lms_pb2
-import lms_pb2_grpc
-from grpc import StatusCode
 
+import tutoring_pb2_grpc
+import tutoring_pb2
+import lms_pb2_grpc
+import lms_pb2
 
 def db_execute(sql_query, args):
     try:
@@ -82,7 +85,8 @@ def authorize_role(required_role):
             conn = db_connect()
             try:
                 cursor = conn.cursor()
-                cursor.execute("SELECT role FROM users WHERE user_id = ?", (user_id,))
+                cursor.execute(
+                    "SELECT role FROM users WHERE user_id = ?", (user_id,))
                 result = cursor.fetchone()
                 if result and result[0] == required_role:
                     # If user has the required role, proceed to the original function
@@ -109,6 +113,29 @@ def authorize_role(required_role):
 
 
 class LMSService(lms_pb2_grpc.LMSServicer):
+    def get_ai_response(self, course_name, query):
+        try:
+            print("Connecting to Tutoring Server...")
+
+            # Connect to the Tutoring Server on port 50052
+            channel = grpc.insecure_channel('localhost:50052')
+            stub = tutoring_pb2_grpc.TutoringServiceStub(channel)
+
+            # Make the request to the tutoring server
+            response = stub.GetTutoringResponse(
+                tutoring_pb2.TutoringRequest(
+                    course_name=course_name, query=query, auth_token="super_secret_token"
+                )
+            )
+            return response.response
+
+        except grpc.RpcError as e:
+            print(f"Failed to connect to Tutoring Server: {e}")
+            return None
+        except Exception as ex:
+            print(f"Unexpected error: {ex}")
+            return None
+
 
     def Login(self, request, context):
         conn = db_connect()
@@ -138,7 +165,8 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         conn = db_connect()
         cursor = conn.cursor()
 
-        cursor.execute("DELETE FROM sessions WHERE token = ?", (request.token,))
+        cursor.execute("DELETE FROM sessions WHERE token = ?",
+                       (request.token,))
         conn.commit()
         cursor.close()
         conn.close()
@@ -180,29 +208,62 @@ class LMSService(lms_pb2_grpc.LMSServicer):
 
         return lms_pb2.PostResponse(status=res)
 
-    @authorize_role("student")
     def PostQuery(self, request, context, user_id=None):
 
         content = request.content
         course_id = request.course_id
         is_ai = request.is_ai
 
-        # Save the post in the database
+        # Step 1: Fetch the course name based on course_id
         conn = db_connect()
         cursor = conn.cursor()
 
         cursor.execute(
-            """
-            INSERT INTO queries (user_id, course_id, content)
-            VALUES (?, ?, ?)
-            """,
-            (user_id, course_id, content),
+            "SELECT title FROM courses WHERE course_id = ?",
+            (course_id,)
         )
+        course_name_row = cursor.fetchone()
+        if not course_name_row:
+            context.abort(grpc.StatusCode.NOT_FOUND, "Course not found")
+
+        course_name = course_name_row[0]
+
+        # Step 2: Handle AI query
+        if is_ai:
+
+            cursor.execute(
+                "SELECT user_id, role FROM users WHERE username = LLM"
+            )
+            llm_id = cursor.fetchone()
+            # Call the Tutoring Server with the course name and query
+            ai_response = self.get_ai_response(course_name, content)
+            if not ai_response:
+                context.abort(grpc.StatusCode.UNAVAILABLE, "AI tutoring service is unavailable. Please try again later.")
+
+            # Save the AI response as the reply to the query
+            cursor.execute(
+                """
+                INSERT INTO queries (user_id, course_id, content, reply, replied_at, replier_id)
+                VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, ?)
+                """,
+                (user_id, course_id, content, ai_response, llm_id[0]),
+            )
+        else:
+            # Save a regular query without a reply
+            cursor.execute(
+                """
+                INSERT INTO queries (user_id, course_id, content)
+                VALUES (?, ?, ?)
+                """,
+                (user_id, course_id, content),
+            )
 
         conn.commit()
         cursor.close()
         conn.close()
+
         return lms_pb2.PostResponse(status="success")
+
 
     @authorize_role("instructor")
     def PostQueryReply(self, request, context, user_id=None):
@@ -237,7 +298,8 @@ class LMSService(lms_pb2_grpc.LMSServicer):
 
         # Fetch course materials or posts based on request_type
         if request_type == "course material":
-            cursor.execute("SELECT course_id, title, content FROM courses where course_id = ?", (course_id,))
+            cursor.execute(
+                "SELECT course_id, title, content FROM courses where course_id = ?", (course_id,))
         elif request_type == "assignment":
             cursor.execute(
                 "SELECT assignment_id, user_id, content, grade FROM assignments where course_id = ?",
@@ -256,7 +318,8 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         # Prepare data items based on the request type
         if request_type == "course material":
             data_items = (
-                lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} - {item[2]}")
+                lms_pb2.DataItem(
+                    id=str(item[0]), content=f"{item[1]} - {item[2]}")
                 for item in items
             )  # Combine title and content
         elif request_type == "query":

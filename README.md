@@ -105,10 +105,11 @@ This will also insert some dummy course materials into the SQLite database.
 
 ### 1. Run the gRPC Server
 
-Start the gRPC server by running the following command:
+Start the gRPC server and tutoring servers by running the following command:
 
 ```bash
 python server/server.py
+python tutoring_server/tutoring_server.py
 ```
 
 The server will start listening for requests on port `50051`.
