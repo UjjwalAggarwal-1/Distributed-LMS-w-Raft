@@ -28,7 +28,7 @@ class TutoringService(tutoring_pb2_grpc.TutoringServiceServicer):
         print(f"Received a tutoring request for the course: {course_name}")
 
         # Create a context-aware prompt for the LLM
-        prompt = f"In the context of the subject: {course_name}, please answer this question: {query}"
+        prompt = f"In the context of the subject: {course_name}, Please explain in simple terms: {query}"
         print("Prompt:", prompt)
         # Generate a response using GPT-2
         response = tutoring_model(
