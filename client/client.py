@@ -133,14 +133,17 @@ def main():
             # Get data
             get_type, course_id = get_menu()
             try:
-                response = client.get(token, get_type, course_id)
+                response_stream = client.get(token, get_type, course_id)
+
             except Exception as e:
                 handle_exception(e)
                 break
+            
             if response.status == "success" and response.data_items:
                 print(f"\n--- {get_type.capitalize()} Data ---")
-                for item in response.data_items:
-                    print(f"ID: {item.id}, Content: {item.content}")
+                for response in response_stream:
+                    for item in response.data_items:
+                        print(f"ID: {item.id}, Content: {item.content}")
             else:
                 print("No data found.")
 

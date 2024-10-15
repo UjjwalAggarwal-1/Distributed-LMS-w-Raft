@@ -311,24 +311,24 @@ class LMSService(lms_pb2_grpc.LMSServicer):
                 (course_id,),
             )
         else:
-            lms_pb2.GetResponse(status="failure")
+            yield lms_pb2.GetResponse(status="failure")
+            return
 
         items = cursor.fetchall()
 
-        # Prepare data items based on the request type
+        # Stream the data items as separate responses
         if request_type == "course material":
-            data_items = (
-                lms_pb2.DataItem(
-                    id=str(item[0]), content=f"{item[1]} - {item[2]}")
-                for item in items
-            )  # Combine title and content
+            for item in items:
+                data_item = lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} - {item[2]}")  
+                yield lms_pb2.GetResponse(status="success", data_items=[data_item])
         elif request_type == "query":
-            data_items = (
-                lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} asked {item[2]} and got {item[3]} from {item[4]}") for item in items
-            )
-        else:
-            data_items = (
-                lms_pb2.DataItem(id=str(item[0]), content=f"{item[1]} submitted {item[2]} and got {item[3]}") for item in items
-            )
+            for item in items:
+                data_item = lms_pb2.DataItem(id=str(item[0]),content=f"{item[1]} asked {item[2]} and got {item[3]} from {item[4]}")
+                yield lms_pb2.GetResponse(status="success", data_items=[data_item])
+        else:  # Assuming "assignment" type
+            for item in items:
+                data_item = lms_pb2.DataItem(id=str(item[0]),content=f"{item[1]} submitted {item[2]} and got {item[3]}")
+                yield lms_pb2.GetResponse(status="success", data_items=[data_item])
 
-        return lms_pb2.GetResponse(status="success", data_items=data_items)
+        cursor.close()
+        conn.close()

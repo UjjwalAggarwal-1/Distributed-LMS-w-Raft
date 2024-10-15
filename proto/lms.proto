@@ -11,8 +11,8 @@ service LMS {
     rpc PostQuery(PostQueryRequest) returns (PostResponse);
     rpc PostQueryReply(PostQueryReplyRequest) returns (PostResponse);
     
-    // RPC for retrieving data
-    rpc Get(GetRequest) returns (GetResponse);
+    // RPC for retrieving data as a stream
+    rpc Get(GetRequest) returns (stream GetResponse);
 }
 
 message LoginRequest {
@@ -61,7 +61,7 @@ message PostQueryReplyRequest {
 
 message PostResponse {
     string status = 1;
-    string content=2;
+    string content = 2;
 }
 
 message GetRequest {
@@ -79,5 +79,3 @@ message DataItem {
     string id = 1;
     string content = 2;
 }
-
-
