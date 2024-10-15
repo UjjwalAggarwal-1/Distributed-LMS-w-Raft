@@ -7,10 +7,15 @@ This is a basic Learning Management System (LMS) built using Python, gRPC, and S
 
 ## Index
 
+- [Architecture](#architecture)
 - [Project Structure](#project-structure)
 - [Requirements](#requirements)
 - [Setup Instructions](#setup-instructions)
 - [Run the Project](#running-the-project)
+
+## Architecture
+
+![](./architecture.png)
 
 ## Project Structure
 
@@ -25,17 +30,21 @@ This is a basic Learning Management System (LMS) built using Python, gRPC, and S
 │   ├── grpc_server.py          # Main gRPC server code handling RPC functions
 │   ├── server.py               # Code to run the grpc server
 │   ├── database.py             # SQLite database creation logic
-│   └── initialize_content.py   # Python script to initialize dummy the LMS course content
+│   └── initialize_content.py   # Python script to initialize dummy LMS course content
 │
 ├── /proto
 │   ├── lms.proto               # Protocol buffer file defining gRPC services and messages b/w Server and Client
-│   └── tutoring.proto          # Protocol buffer file defining gRPC services and messages b/w Server and LLM
+│   └── tutoring.proto          # Protocol buffer file defining gRPC services and messages b/w Server and LLM Server
 │   └── lms_pb2.py              # Auto-generated (at setup) Python gRPC class
 │   └── lms_pb2_grpc.py         # Auto-generated (at setup) gRPC server and client classes
-│   └── tutoring_pb2.py         # Auto-generated (at setup) Python gRPC class
-│   └── tutoring_pb2_grpc.py    # Auto-generated (at setup) gRPC server and client classes
+│   └── tutoring_pb2.py         # Auto-generated (at setup) Python gRPC class for tutoring server
+│   └── tutoring_pb2_grpc.py    # Auto-generated (at setup) gRPC server and client classes for tutoring server
 │
-└── requirements.txt            # Python dependencies for the project (gRPC, SQLite, etc.)
+├── requirements_server_client.txt            # Python dependencies for the server/client nodes (gRPC, SQLite, etc.)
+├── requirements_tutoring_server.txt          # Python dependencies for the AI based tutoring server (gRPC, SQLite, PyTorch, etc.)
+├── setup_server_client.sh                    # Setup for the server/client nodes
+├── setup_tutoring_server.sh                  # Setup for the tutoring server
+└── README.md                                 # this ReadMe file
 ```
 
 
@@ -55,15 +64,16 @@ cd AOS-Adventure
 
 
 ### 2. Run the setup.sh bash file
-* You may create a virtual env and activate it now
+* You may create a virtual env and activate it before running the script
 
 ```
-./setup.sh
+./setup_server_client.sh // for the server or client nodes
+./setup_tutoring_server.sh // for the tutoring server node
 ```
 incase the file is not executable, run
 
 ```
-chmod +x setup.sh
+chmod +x {filename}
 ```
 
 ## Without Setup file
@@ -81,7 +91,8 @@ cd AOS-Adventure
 Install the required Python dependencies using `pip`:
 
 ```bash
-pip install -r requirements.txt
+pip install -r requirements_server_client.txt // for the server or client nodes
+pip install -r requirements_tutoring_server.txt // for the tutoring server node
 ```
 
 ### 3. Generate gRPC Code from `lms.proto` and `tutoring.proto`
@@ -99,7 +110,7 @@ similarly for `tutoroing.proto`
 python -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./proto ./proto/tutoring.proto
 ```
 
-### 4. Initialize Database Content
+### 4. Initialize Database Content (only for server node, not LLM server)
 
 ```bash
 python ./server/database.py
@@ -113,11 +124,10 @@ This will also insert some dummy course materials into the SQLite database.
 
 ### 1. Run the gRPC Server
 
-Start the gRPC server and tutoring servers by running the following command:
+Start the gRPC server by running the following command:
 
 ```bash
 python server/server.py
-python tutoring_server/tutoring_server.py
 ```
 
 The server will start listening for requests on port `50051`.
@@ -126,20 +136,27 @@ The server will start listening for requests on port `50051`.
 
 To stop the gRPC server, simply press `CTRL + C` in the terminal where it is running.
 
-### 2. Run the Client
 
-In a separate terminal, run the client to interact with the LMS:
+### 2. Run the Tutoring Server
 
-```bash
-python client/client.py
-```
-
-### 3. Run the Tutoring Server
-
-In a separate terminal, run the client to interact with the LMS:
+To run the LLM tutoring server:
 
 ```bash
 python tutoring_server/tutoring_server.py
+```
+
+The server will start listening for requests on port `50052`.
+
+#### To Stop the Server
+
+To stop the gRPC server, simply press `CTRL + C` in the terminal where it is running.
+
+### 3. Run the Client
+
+To run the client to interact with the LMS:
+
+```bash
+python client/client.py
 ```
 
 The client will provide options for login, posting data, retrieving data, and logging out.

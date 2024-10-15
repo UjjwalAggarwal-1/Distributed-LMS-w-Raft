@@ -323,11 +323,11 @@ class LMSService(lms_pb2_grpc.LMSServicer):
                 yield lms_pb2.GetResponse(status="success", data_items=[data_item])
         elif request_type == "query":
             for item in items:
-                data_item = lms_pb2.DataItem(id=str(item[0]),content=f"{item[1]} asked {item[2]} and got {item[3]} from {item[4]}")
+                data_item = lms_pb2.DataItem(id=str(item[0]),content=f"{item[1]} asked: {item[2]}, and got: {item[3]} from {item[4]}")
                 yield lms_pb2.GetResponse(status="success", data_items=[data_item])
         else:  # Assuming "assignment" type
             for item in items:
-                data_item = lms_pb2.DataItem(id=str(item[0]),content=f"{item[1]} submitted {item[2]} and got {item[3]}")
+                data_item = lms_pb2.DataItem(id=str(item[0]),content=f"{item[1]} submitted: {item[2]}, and got: {item[3]}")
                 yield lms_pb2.GetResponse(status="success", data_items=[data_item])
 
         cursor.close()
