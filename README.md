@@ -68,10 +68,16 @@ cd AOS-Adventure
 ### 2. Run the setup.sh bash file
 * You may create a virtual env and activate it before running the script
 
+for the tutoring server node
 ```
-./setup_server_client.sh // for the server or client nodes
-./setup_tutoring_server.sh // for the tutoring server node
+./setup_tutoring_server.sh 
 ```
+
+for the server or client nodes
+```
+./setup_server_client.sh 
+```
+
 incase the file is not executable, run
 
 ```
@@ -92,9 +98,14 @@ cd AOS-Adventure
 
 Install the required Python dependencies using `pip`:
 
+for the server or client nodes
 ```bash
-pip install -r requirements_server_client.txt // for the server or client nodes
-pip install -r requirements_tutoring_server.txt // for the tutoring server node
+pip install -r requirements_server_client.txt 
+```
+
+for the tutoring server node
+```bash
+pip install -r requirements_tutoring_server.txt 
 ```
 
 ### 3. Generate gRPC Code from `lms.proto` and `tutoring.proto`
