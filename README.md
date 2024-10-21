@@ -17,6 +17,8 @@ This is a basic Learning Management System (LMS) built using Python, gRPC, and S
 
 ![](./architecture.png)
 
+(the arrows signify the direction in which a connection begins. Here, a server can not initiate a connection with a client, but can with a tutoring server, and so on) 
+
 ## Project Structure
 
 ```
