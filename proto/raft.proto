@@ -1,0 +1,39 @@
+syntax = "proto3";
+
+service RaftService {
+  rpc RequestVote (VoteRequest) returns (VoteResponse);
+  rpc AppendEntries (LogEntry) returns (AppendResponse);
+  rpc Heartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+message VoteRequest {
+  int32 term = 1;
+  int32 candidateId = 2;
+  int32 lastLogIndex = 3;
+  int32 lastLogTerm = 4;
+}
+
+message VoteResponse {
+  bool voteGranted = 1;
+  int32 term = 2;
+}
+
+message LogEntry {
+  int32 term = 1;
+  string command = 2;
+  int32 leaderId = 3;
+}
+
+message AppendResponse {
+  bool success = 1;
+  int32 term = 2;
+}
+
+message HeartbeatRequest {
+  int32 term = 1;
+  int32 leaderId = 2;
+}
+
+message HeartbeatResponse {
+  bool success = 1;
+}

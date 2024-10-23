@@ -16,6 +16,11 @@ python3 -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./
 python -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./proto ./proto/lms.proto || 
 { echo "Failed to generate gRPC code for lms.proto"; exit 1; }
 
+# Generate gRPC code for Raft
+python3 -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./proto ./proto/raft.proto ||
+python -m grpc_tools.protoc -I./proto --python_out=./proto --grpc_python_out=./proto ./proto/raft.proto || 
+{ echo "Failed to generate gRPC code for lms.proto"; exit 1; }
+
 echo "gRPC code generated successfully."
 
 
