@@ -8,7 +8,7 @@ pip3 install -r requirements_server_client.txt ||
 { echo "Failed to install dependencies"; exit 1; }
 
 echo ""
-echo "Generating gRPC code from lms.proto..."
+echo "Generating gRPC code from lms.proto and raft.proto..."
 echo ""
 
 # Generate gRPC code for LMS
@@ -37,3 +37,5 @@ python ./server/database.py ||
 python3 ./server/initialize_content.py || 
 python ./server/initialize_content.py ||
 { echo "Failed to initialize content"; exit 1; }
+
+mkdir logs

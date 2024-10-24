@@ -14,6 +14,8 @@ import tutoring_pb2_grpc
 import tutoring_pb2
 import lms_pb2_grpc
 import lms_pb2
+import raft_pb2_grpc
+import raft_pb2
 
 def db_execute(sql_query, args):
     try:
@@ -112,13 +114,41 @@ def authorize_role(required_role):
     return decorator
 
 
+def check_leadership(func):
+    """Decorator to check if the current node is the leader before proceeding."""
+    @wraps(func)
+    def wrapper(self, request, context, *args, **kwargs):
+        leader_ = self.get_leader()
+        print(f"wrapper, {leader_=}")
+        if not leader_ in [f"localhost:{self.port}", f"127.0.0.1:{self.port}"]:
+            # context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
+            # context.set_details("This node is not the leader. Write requests should be sent to the leader.")
+            return lms_pb2.PostResponse(status="not_leader", content = leader_)
+
+        return func(self, request, context, *args, **kwargs)
+    
+    return wrapper
+
+
 class LMSService(lms_pb2_grpc.LMSServicer):
+
+    def __init__(self, port, raft_stub):
+        self.raft_stub = raft_stub
+        self.port = port
+
+    def get_leader(self):
+        response = self.raft_stub.GetLeader(raft_pb2.GetLeaderRequest())
+        return response.leader_address
+    
+    def add_to_logs(self, statement):
+        self.raft_stub.RedirectWrite(raft_pb2.RedirectWriteRequest(data=statement))
+
     def get_ai_response(self, course_name, query):
         try:
             print("Connecting to Tutoring Server...")
 
             # Connect to the Tutoring Server on port 50052
-            channel = grpc.insecure_channel('localhost:50052')
+            channel = grpc.insecure_channel('localhost:60052')
             stub = tutoring_pb2_grpc.TutoringServiceStub(channel)
 
             # Make the request to the tutoring server
@@ -136,7 +166,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             print(f"Unexpected error: {ex}")
             return None
 
-
+    @check_leadership
     def Login(self, request, context):
         conn = db_connect()
         cursor = conn.cursor()
@@ -155,12 +185,17 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             cursor.execute(
                 "INSERT INTO sessions (user_id, token) VALUES (?, ?)", (user_id, token)
             )
+            try:
+                self.add_to_logs(f"INSERT INTO sessions (user_id, token) VALUES ({user_id}, {token})")
+            except Exception as e:
+                print(e)
             conn.commit()
             return lms_pb2.LoginResponse(status="success", token=token, role=role)
         else:
             return lms_pb2.LoginResponse(status="failure")
 
     @authorize
+    @check_leadership
     def Logout(self, request, context, *args, **kwargs):
         conn = db_connect()
         cursor = conn.cursor()
@@ -177,6 +212,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             return lms_pb2.LogoutResponse(status="failure")
 
     @authorize_role("student")
+    @check_leadership
     def PostAssignment(self, request, context, user_id=None, *args, **kwargs):
 
         content = request.content
@@ -190,9 +226,11 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             """,
             (user_id, course_id, content),
         )
+        self.add_to_logs(f"INSERT INTO assignments (user_id, course_id, content) VALUES {(user_id, course_id, content)}")
         return lms_pb2.PostResponse(status=res)
 
     @authorize_role("instructor")
+    @check_leadership
     def PostAssignmentGrade(self, request, context, user_id=None):
 
         grade = request.grade
@@ -208,6 +246,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
 
         return lms_pb2.PostResponse(status=res)
 
+    @check_leadership
     def PostQuery(self, request, context, user_id=None):
 
         content = request.content
@@ -266,6 +305,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
 
 
     @authorize_role("instructor")
+    @check_leadership
     def PostQueryReply(self, request, context, user_id=None):
 
         reply = request.content
@@ -289,6 +329,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         return lms_pb2.PostResponse(status="success")
 
     @authorize
+    @check_leadership
     def Get(self, request, context, user_id=None):
         request_type = request.type
         course_id = request.course_id

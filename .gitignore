@@ -11,3 +11,4 @@ proto/tutoring_pb2_grpc.py
 proto/tutoring_pb2.py
 proto/raft_pb2_grpc.py
 proto/raft_pb2.py
+logs/

@@ -81,11 +81,70 @@ def handle_exception(e):
     print(e)
 
 
-def main():
-    client = LMSClient()
+def main(port):
+    client = LMSClient(port)
     logged_in = False
     token = ""
     role = ""
+
+
+    def logout_func():
+        # Logout process
+        nonlocal client
+        nonlocal logged_in
+        nonlocal token
+        try:
+            response = client.logout(token)
+        except Exception as e:
+            handle_exception(e)
+            return
+        if response.status == "not_leader":
+            print(f"{response.content=}")
+            if response.content == "":
+                print("No leader in Raft!! Please Try again later!!")
+                return -5
+            client = LMSClient(response.content.split(":")[1])
+            logout_func()
+            return
+        if response.status == "success":
+            logged_in = False
+            token = None
+            print("Logout successful.")
+        else:
+            print("Logout failed.")
+
+    def login_func(ask=True, username="", password=""):
+        # Login process
+        nonlocal client
+        nonlocal logged_in
+        nonlocal token
+        nonlocal role
+        if ask:
+            username = input("Username: ")
+            password = getpass("Password: ")
+        else:
+            username = username
+            password = password
+        try:
+            response = client.login(username, password)
+        except Exception as e:
+            handle_exception(e)
+            return 
+        if response.status == "not_leader":
+            print(f"{response.content=}")
+            if response.content == "":
+                print("No leader in Raft!! Please Try again later!!")
+                return -5
+            client = LMSClient(response.content.split(":")[1])
+            login_func(ask=False, username=username, password=password)
+            return
+        if response.status == "success":
+            token = response.token
+            logged_in = True
+            role = response.role
+            print(f"Login successful as {role}! \nToken: {token}")
+        else:
+            print("Login failed. Please check your credentials and try again.")
 
     while True:
         display_menu(logged_in)
@@ -96,21 +155,8 @@ def main():
 
         if choice == "1":
             if not logged_in:
-                # Login process
-                username = input("Username: ")
-                password = getpass("Password: ")
-                try:
-                    response = client.login(username, password)
-                except Exception as e:
-                    handle_exception(e)
+                if login_func()==-5:
                     break
-                if response.status == "success":
-                    token = response.token
-                    logged_in = True
-                    role = response.role
-                    print(f"Login successful as {role}! \nToken: {token}")
-                else:
-                    print("Login failed. Please check your credentials and try again.")
 
             else:
                 # Post data
@@ -118,13 +164,26 @@ def main():
                 if post_type == "ai_query":
                     print("Waiting for AI response...")
 
-                try:
-                    response = client.post(
-                        token, post_type=post_type, data=content, role=role, input_id=input_id
-                    )
+                while True:
+                    try:
+                        response = client.post(
+                            token, post_type=post_type, data=content, role=role, input_id=input_id
+                        )
 
-                except Exception as e:
-                    handle_exception(e)
+                        if response.status == "not_leader":
+                            print(f"{response.content=}")
+                            if response.content == "":
+                                print("No leader in Raft!! Please Try again later!!")
+                                return # end the function
+                            client = LMSClient(response.content)
+                            continue
+                        else:
+                            break
+
+                    except Exception as e:
+                        handle_exception(e)
+                        break
+
                 if post_type == "ai_query":
                     print(f"AI Response: {response.content}")
                 print(f"Post Status: {response.status}")
@@ -139,27 +198,17 @@ def main():
                 handle_exception(e)
                 break
             
-            if response.status == "success" and response.data_items:
-                print(f"\n--- {get_type.capitalize()} Data ---")
-                for response in response_stream:
-                    for item in response.data_items:
-                        print(f"ID: {item.id}, Content: {item.content}")
+            # if response_stream.status == "success" and response_stream.data_items:
+            print(f"\n--- {get_type.capitalize()} Data ---")
+            for response in response_stream:
+                for item in response.data_items:
+                    print(f"ID: {item.id}, Content: {item.content}")
             else:
                 print("No data found.")
 
         elif choice == "3":
-            # Logout process
-            try:
-                response = client.logout(token)
-            except Exception as e:
-                handle_exception(e)
+            if logout_func()==-5:
                 break
-            if response.status == "success":
-                logged_in = False
-                token = None
-                print("Logout successful.")
-            else:
-                print("Logout failed.")
 
         elif choice == "0":
             # Exit the program
@@ -176,4 +225,11 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import argparse
+    parser = argparse.ArgumentParser(
+        description="Input Node ID and Port number for node"
+    )
+    parser.add_argument("port_number", type=int, help="Port number")
+    args = parser.parse_args()
+    port = args.port_number
+    main(port)

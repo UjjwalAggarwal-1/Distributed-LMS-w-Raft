@@ -2,15 +2,16 @@ syntax = "proto3";
 
 service RaftService {
   rpc RequestVote (VoteRequest) returns (VoteResponse);
-  rpc AppendEntries (LogEntry) returns (AppendResponse);
-  rpc Heartbeat (HeartbeatRequest) returns (HeartbeatResponse);
+  rpc AppendEntries(AppendEntriesRequest) returns (AppendEntriesResponse);
+  rpc GetLeader(GetLeaderRequest) returns (GetLeaderResponse);
+  rpc RedirectWrite(RedirectWriteRequest) returns (RedirectWriteResponse);
 }
 
 message VoteRequest {
   int32 term = 1;
   int32 candidateId = 2;
-  int32 lastLogIndex = 3;
-  int32 lastLogTerm = 4;
+  // int32 lastLogIndex = 3;
+  // int32 lastLogTerm = 4;
 }
 
 message VoteResponse {
@@ -19,21 +20,37 @@ message VoteResponse {
 }
 
 message LogEntry {
-  int32 term = 1;
-  string command = 2;
-  int32 leaderId = 3;
+    //int64 index = 1;       // the time in my implementation
+    //int32 term = 2;        // Term of the entry
+    //string command = 3;    // Command associated with the log entry
+    string line = 1;
 }
 
-message AppendResponse {
-  bool success = 1;
-  int32 term = 2;
+message AppendEntriesRequest {
+    int32 term = 1;            // Leader's term
+    int32 leaderId = 2;        // ID of the leader
+    double prevLogIndex = 3;    // Index of the log entry immediately preceding new ones
+    // int32 prevLogTerm = 4;     // Term of prevLogIndex entry
+    repeated string entries = 5; // New log entries to be appended
+    // int32 leaderCommit = 6;     // Leader's commit index
 }
 
-message HeartbeatRequest {
-  int32 term = 1;
-  int32 leaderId = 2;
+message AppendEntriesResponse {
+    bool success = 1;           // Indicates if the append was successful
+    int32 term = 2;             // Current term, for leader to update itself
+    double missingIndex = 3;     // Index of the first missing log entry
 }
 
-message HeartbeatResponse {
-  bool success = 1;
+message GetLeaderRequest {}
+
+message GetLeaderResponse {
+    string leader_address = 1;
+}
+
+message RedirectWriteRequest {
+    string data = 1;  // The data that needs to be written to logs
+}
+
+message RedirectWriteResponse {
+    string status = 1;  // Success or failure
 }

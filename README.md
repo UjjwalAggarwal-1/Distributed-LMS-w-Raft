@@ -52,7 +52,7 @@ This is a basic Learning Management System (LMS) built using Python, gRPC, and S
 
 ## Requirements
 
-- Python 3.8+
+- Python 3.8 or 3.9
 
 ## Setup Instructions
 

@@ -49,9 +49,9 @@ def serve():
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
     tutoring_pb2_grpc.add_TutoringServiceServicer_to_server(
         TutoringService(), server)
-    server.add_insecure_port('[::]:50052')
+    server.add_insecure_port('[::]:60052')
     server.start()
-    print("Tutoring gRPC Server is running on port 50052")
+    print("Tutoring gRPC Server is running on port 60052")
     try:
         server.wait_for_termination()
     except KeyboardInterrupt:

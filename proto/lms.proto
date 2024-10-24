@@ -22,8 +22,9 @@ message LoginRequest {
 
 message LoginResponse {
     string status = 1;
-    string token = 2;
+    string content = 2;
     string role = 3;
+    string token = 4;
 }
 
 message LogoutRequest {
