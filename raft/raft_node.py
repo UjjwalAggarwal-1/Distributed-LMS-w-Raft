@@ -5,6 +5,7 @@ import time
 import random
 import sys, os
 import argparse
+import base64
 
 
 sys.path.append(os.path.join(os.path.dirname(__file__), "..", "proto"))
@@ -34,22 +35,25 @@ class RaftNode(raft_pb2_grpc.RaftServiceServicer):
         self.leader_id = None
         self.last_heartbeat = time.time()
 
-        #logs...
-        self.log_file = f'logs/{self.node_id}.txt'
-        self.log_sync_index = -1 #timestamp is the index, for leader
+        # logs...
+        self.log_file = f"logs/{self.node_id}.txt"
+        self.log_sync_index = -1  # timestamp is the index, for leader
 
-        with open(self.log_file,"a") as _:
+        with open(self.log_file, "a") as _:
             pass
 
         # Locks for thread safety, both in server and client
         self.lock = threading.Lock()
 
+        self.current_term = get_last_log_term(self.log_file)
+        self.log_sync_index = get_last_log_timestamp(self.log_file)
+
     def GetLeader(self, request, context):
         leader_address = f"localhost:{self.leader_id+10000}"
-        if self.state=="leader":
+        if self.state == "leader":
             leader_address = f"localhost:{self.port+10000}"
         return raft_pb2.GetLeaderResponse(leader_address=leader_address)
-    
+
     def RedirectWrite(self, request, context):
         try:
             with open(f"logs/{self.port}.txt", "a") as logs:
@@ -63,72 +67,96 @@ class RaftNode(raft_pb2_grpc.RaftServiceServicer):
         print_with_time(
             f"RequestVote Received, {self.current_term=}, {request.term=}, {request.candidateId=}, {self.voted_for=}"
         )
+
         with self.lock:
-            # Step 1: If the request term is higher, update current term and become a follower
-            if request.term > self.current_term:
-                # self.current_term = (
-                #     request.term - 1
-                # )  # cause i am sure, till -1 of this the request-ing node have seen
-                # self.voted_for = None
-                self.state = "follower"
+            try:
+                # Step 1: If the request term is higher, update current term and become a follower
+                if request.term > self.current_term:
+                    # self.current_term = (
+                    #     request.term - 1
+                    # )  # cause i am sure, till -1 of this the request-ing node have seen
+                    self.voted_for = None
+                    self.state = "follower"
 
-            # Step 2: If the request term is lower, reject the vote
-            if request.term <= self.current_term:
-                response = raft_pb2.VoteResponse(
-                    voteGranted=False, term=self.current_term
-                )
-                return response
-            self.last_heartbeat = time.time()
-            # Step 3: Check log up-to-date status and grant vote if appropriate
-            if (
-                self.voted_for is None or self.voted_for == request.candidateId
-            ) and self.is_log_up_to_date(request):
-                self.voted_for = request.candidateId
-                vote_granted = True
-            else:
-                vote_granted = False
+                # Step 2: If the request term is lower, reject the vote
+                if request.term <= self.current_term:
+                    response = raft_pb2.VoteResponse(
+                        voteGranted=False, term=self.current_term
+                    )
+                    return response
 
-        response = raft_pb2.VoteResponse(
-            voteGranted=vote_granted, term=self.current_term
-        )
+                # Step 3: Check log up-to-date status and grant vote if appropriate
+                if (
+                    self.voted_for is None or self.voted_for == request.candidateId
+                ) and self.is_log_up_to_date(request):
+                    self.voted_for = request.candidateId
+                    vote_granted = True
+                else:
+                    vote_granted = False
+            except Exception as e:
+                print(e)
+        try:
+            response = raft_pb2.VoteResponse(
+                voteGranted=vote_granted, term=self.current_term
+            )
+        except Exception as e:
+            print("excP", e)
         return response
 
     # Handle AppendEntries RPC (for log replication)
     def AppendEntries(self, request, context):
-        print_with_time(f"AppendEntries Recvd {self.current_term=}, {request.term=}, {self.leader_id=}, {request.leaderId=}, {request.prevLogIndex}")
+        print_with_time(
+            f"AppendEntries Recvd {self.current_term=}, {request.term=}, {self.leader_id=}, {request.leaderId=}, {request.prevLogIndex}"
+        )
         with self.lock:
-            response = raft_pb2.AppendEntriesResponse(success=False, term=self.current_term, missingIndex=-2)
-            
-            # If the leader's term is higher, update the follower's term
-            if request.term > self.current_term:
-                self.current_term = request.term
-                self.state = "follower"
-                self.voted_for = None
-                self.leader_id = request.leaderId
-            
-            # Reject the AppendEntries if the term is lower
-            if request.term < self.current_term:
-                print("rejected append entries, lower term")
-                return response
-            
+            try:
+                response = raft_pb2.AppendEntriesResponse(
+                    success=False, term=self.current_term, missingIndex=-2
+                )
 
-            # Check if the follower's logs match the leader's log up to prevLogIndex
-            last_log_index_ = get_last_log_timestamp(self.log_file) or -1
-            if request.prevLogIndex != last_log_index_:
-                # Logs are not in sync; request missing logs from the leader
-                print("rejected append entries, no sync")
-                response.missingIndex = last_log_index_
-                return response
-            
-            print("accepted append entries")
-            
-            self.last_heartbeat = time.time()
+                # If the leader's term is higher, update the follower's term
+                if request.term > self.current_term:
+                    self.current_term = request.term
+                    self.state = "follower"
+                    self.voted_for = None
+                    self.leader_id = request.leaderId
 
-            # Append the log entries if they are valid (in sequence)
-            print_with_time(f"Appending logs to {self.log_file}")
-            append_logs_to_file(self.log_file, request.entries)
-            
-            response.success = True
+                # Reject the AppendEntries if the term is lower
+                if request.term < self.current_term:
+                    print("rejected append entries, lower term")
+                    return response
+
+                # Check if the follower's logs match the leader's log up to prevLogIndex
+                try:
+                    last_log_index_ = get_last_log_timestamp(self.log_file)
+                except Exception as e:
+                    print(e)
+
+                self.last_heartbeat = (
+                    time.time()
+                )  ## things look good till now, so update heartbeat
+
+                if (
+                    request.prevLogIndex != -1
+                    and request.prevLogIndex != last_log_index_
+                ):
+                    # Logs are not in sync; request missing logs from the leader
+                    print("rejected append entries, no sync")
+                    response.missingIndex = last_log_index_
+                    return response
+
+                print("accepted append entries")
+
+                # Append the log entries if they are valid (in sequence)
+                print_with_time(f"Appending logs to {self.log_file}")
+                decoded_logs = [
+                    base64.b64decode(entry).decode("utf-8") for entry in request.entries
+                ]
+                append_logs_to_file(self.log_file, decoded_logs)
+
+                response.success = True
+            except Exception as e:
+                print(e)
         return response
 
     def is_log_up_to_date(self, request):
@@ -147,23 +175,38 @@ class RaftClient:
         Followers check if Leader has not been inactive for specified time
         """
         while True:
-            print("run")
             if self.node.state == "leader":
                 # Leader sends heartbeats to followers
                 replication_count = 1
-                print(">>>?>>>>")
+                last_index_, logs_ = find_logs_after_timestamp(
+                    self.node.log_file, self.node.log_sync_index
+                )
+                logs_ = [
+                    base64.b64encode(entry.encode("utf-8")).decode("utf-8")
+                    for entry in logs_
+                ]
+                options = [
+                    ("grpc.max_send_message_length", 50 * 1024 * 1024),  # e.g., 50 MB
+                    ("grpc.max_receive_message_length", 50 * 1024 * 1024),
+                ]
 
-                last_term_, logs_ = find_logs_after_timestamp(self.node.log_file, self.node.log_sync_index)
-                print("?>>>>", logs_)
                 for peer in self.node.peers:
-                    with grpc.insecure_channel(peer) as channel:
+                    with grpc.insecure_channel(peer, options=options) as channel:
                         stub = raft_pb2_grpc.RaftServiceStub(channel)
 
                         with self.node.lock:
+                            # print(
+                            #     f"{self.node.current_term=}, {type(self.node.current_term)=}"
+                            # )
+                            # print(f"{self.node.node_id=}, {type(self.node.node_id)=}")
+                            # print(
+                            #     f"{self.node.log_sync_index=}, {type(self.node.log_sync_index)=}"
+                            # )
+                            # print(f"{logs_=}, {type(logs_)=}")
                             request = raft_pb2.AppendEntriesRequest(
                                 term=self.node.current_term,
                                 leaderId=self.node.node_id,
-                                prevLogIndex=self.node.log_sync_index,
+                                prevLogIndex=float(self.node.log_sync_index),
                                 # prevLogTerm=last_term_,
                                 entries=logs_,
                                 # leaderCommit=self.commitIndex
@@ -171,21 +214,28 @@ class RaftClient:
                         try:
                             response = stub.AppendEntries(request)
                             if not response.success:
-                                if response.misssingIndex == -2:
+                                if response.missingIndex == -2:
                                     print_with_time(f"Stepping down as leader")
                                     with self.node.lock:
                                         self.node.state = "follower"
-                                print_with_time(f"{peer} did not sync logs successfully")
+                                        return
+                                print_with_time(
+                                    f"{peer} did not sync logs successfully"
+                                )
                                 self.handle_log_sync(peer, response.missingIndex)
                             else:
                                 replication_count += 1
                         except grpc.RpcError as e:
-                            print_with_time(f"Failed to send heartbeat to node {peer}:{e}")
+                            print_with_time(
+                                f">>Failed to send heartbeat to node {peer}:{e}"
+                            )
 
                 if replication_count > len(self.node.peers) // 2:
-                    print_with_time(f"Logs updated successfully for {replication_count} nodes")
+                    print_with_time(
+                        f"Logs updated successfully for {replication_count} nodes"
+                    )
                     with self.node.lock:
-                        self.node.log_sync_index = float(logs_[-1].split(" ",1)[0]) if logs_ else -1
+                        self.node.log_sync_index = last_index_
 
                 time.sleep(HEARTBEAT_INTERVAL)
 
@@ -200,8 +250,6 @@ class RaftClient:
                         f"Node {self.node.node_id} did not recv heartbeat in time"
                     )
                     self.start_election()
-
-
 
     def start_election(self):
         with self.node.lock:
@@ -239,7 +287,7 @@ class RaftClient:
                         print_with_time(
                             f"Node {self.node.node_id} stepping down, term {response.term} is higher"
                         )
-                        return ###
+                        return  ###
                     else:
                         print_with_time(
                             f"Node {peer} did not vote for {self.node.node_id}"
@@ -260,29 +308,40 @@ class RaftClient:
             # self.node.state = "follower"
             self.node.current_term -= 1
             print_with_time(f"Node {self.node.node_id} failed to win election")
-    
+
     def handle_log_sync(self, peer, missing_index):
-        print_with_time(f"Handle log sync, {peer=}, {missing_index}=")
-        _, logs_ = find_logs_after_timestamp(self.node.log_file, missing_index)
-
+        print_with_time(f"Handle log sync, {peer=}, {missing_index=}")
+        try:
+            _, logs_ = find_logs_after_timestamp(self.node.log_file, missing_index)
+            logs_ = [
+                base64.b64encode(entry.encode("utf-8")).decode("utf-8") for entry in logs_
+            ]
+        except Exception as e:
+            print("file exp",e)
         with grpc.insecure_channel(peer) as channel:
-            stub = raft_pb2_grpc.RaftServiceStub(channel)
-            
-            request = raft_pb2.AppendEntriesRequest(
-                term=self.current_term,
-                leaderId=self.node_id,
-                prevLogIndex=self.node.log_sync_index,
-                # prevLogTerm=last_term_,
-                entries=logs_,
-                # leaderCommit=self.commitIndex
-            )
             try:
-                response = stub.AppendEntries(request)
-                if not response.success:
-                    print_with_time(f"{peer} did not sync logs successfully", peer, response.missingIndex)
-            except grpc.RpcError as e:
-                print_with_time(f"Failed to send heartbeat to node {peer}: {e}")
+                stub = raft_pb2_grpc.RaftServiceStub(channel)
 
+                request = raft_pb2.AppendEntriesRequest(
+                    term=self.node.current_term,
+                    leaderId=self.node.node_id,
+                    prevLogIndex=-1,
+                    # prevLogTerm=last_term_,
+                    entries=logs_,
+                    # leaderCommit=self.commitIndex
+                )
+                try:
+                    response = stub.AppendEntries(request)
+                    if not response.success:
+                        print_with_time(
+                            f"{peer} did not sync logs successfully",
+                            peer,
+                            response.missingIndex,
+                        )
+                except grpc.RpcError as e:
+                    print_with_time(f"Failed to send heartbeat to node {peer}: {e}")
+            except Exception as e:
+                print(e)
 
 
 # Start the gRPC server and client threads
@@ -315,8 +374,8 @@ def run_server(node):
 
 if __name__ == "__main__":
     peers = [
-        "localhost:40051",
-        "localhost:40052",
+        "localhost:40051", # server -> 50051
+        "localhost:40052", # server -> 50052 (+10000)
         "localhost:40053",
     ]  # all nodes including the myself
 
