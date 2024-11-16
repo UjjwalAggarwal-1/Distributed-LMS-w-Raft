@@ -120,7 +120,7 @@ def check_leadership(func):
     def wrapper(self, request, context, *args, **kwargs):
         leader_ = self.get_leader()
         print(f"wrapper, {leader_=}")
-        if not leader_ in [f"localhost:{self.port}", f"127.0.0.1:{self.port}"]:
+        if leader_ != f"{self.addr}":
             # context.set_code(grpc.StatusCode.FAILED_PRECONDITION)
             # context.set_details("This node is not the leader. Write requests should be sent to the leader.")
             return lms_pb2.PostResponse(status="not_leader", content = leader_)
@@ -132,9 +132,9 @@ def check_leadership(func):
 
 class LMSService(lms_pb2_grpc.LMSServicer):
 
-    def __init__(self, port, raft_stub):
+    def __init__(self, addr, raft_stub):
         self.raft_stub = raft_stub
-        self.port = port
+        self.addr = addr
 
     def get_leader(self):
         response = self.raft_stub.GetLeader(raft_pb2.GetLeaderRequest())
@@ -148,7 +148,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             print("Connecting to Tutoring Server...")
 
             # Connect to the Tutoring Server on port 60052
-            channel = grpc.insecure_channel('localhost:60052')
+            channel = grpc.insecure_channel('172.17.22.116:60052')
             stub = tutoring_pb2_grpc.TutoringServiceStub(channel)
 
             # Make the request to the tutoring server
@@ -255,6 +255,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         
         return lms_pb2.PostResponse(status=res)
 
+    @authorize
     @check_leadership
     def PostQuery(self, request, context, user_id=None):
 

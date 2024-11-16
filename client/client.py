@@ -81,8 +81,8 @@ def handle_exception(e):
     print(e)
 
 
-def main(port):
-    client = LMSClient(port)
+def main(addr):
+    client = LMSClient(addr)
     logged_in = False
     token = ""
     role = ""
@@ -103,7 +103,7 @@ def main(port):
             if response.content == "":
                 print("No leader in Raft!! Please Try again later!!")
                 return -5
-            client = LMSClient(response.content.split(":")[1])
+            client = LMSClient(response.content)
             logout_func()
             return
         if response.status == "success":
@@ -135,7 +135,7 @@ def main(port):
             if response.content == "":
                 print("No leader in Raft!! Please Try again later!!")
                 return -5
-            client = LMSClient(response.content.split(":")[1])
+            client = LMSClient(response.content)
             login_func(ask=False, username=username, password=password)
             return
         if response.status == "success":
@@ -203,8 +203,8 @@ def main(port):
             for response in response_stream:
                 for item in response.data_items:
                     print(f"ID: {item.id}, Content: {item.content}")
-            else:
-                print("No data found.")
+            # else:
+            #     print("No data found.")
 
         elif choice == "3":
             if logout_func()==-5:
@@ -227,9 +227,9 @@ def main(port):
 if __name__ == "__main__":
     import argparse
     parser = argparse.ArgumentParser(
-        description="Input Node ID and Port number for node"
+        description="Input Address for server"
     )
-    parser.add_argument("port_number", type=int, help="Port number")
+    parser.add_argument("addr", type=str, help="Server Address")
     args = parser.parse_args()
-    port = args.port_number
-    main(port)
+    addr = args.addr
+    main(addr)

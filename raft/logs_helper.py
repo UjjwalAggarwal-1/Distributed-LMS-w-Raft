@@ -48,7 +48,7 @@ def find_logs_after_timestamp(file_path, given_timestamp):
                 return last_index_, []
 
             timestamp = float(parts[0])
-            last_index_ = int(parts[1])
+            last_index_ = timestamp
             if timestamp > given_timestamp:
                 logs_after.append(first_line)
 
@@ -113,9 +113,9 @@ def append_logs_to_file(file_path, logs):
             file.write("\n") 
 
 if __name__=="__main__":
-    # print(f"{get_last_log_timestamp('logs/40053.txt')=}")
+    print(f"{get_last_log_timestamp('logs/40053.txt')=}")
     # print(f"{get_last_log_timestamp('logs/40052.txt')=}")
     # print(f"{get_last_log_timestamp('logs/40051.txt')=}")
-    print(f"{find_logs_after_timestamp('logs/40051.txt', 1729790194.407604)=}")
+    print(f"{find_logs_after_timestamp('logs/40051.txt', 1731694699.9758599)=}")
     # print(f"{find_logs_after_timestamp('logs/40052.txt', -1)=}")
     # print(f"{find_logs_after_timestamp('logs/40051.txt', -1)=}")

@@ -18,11 +18,11 @@ def serve():
     parser.add_argument("port_number", type=int, help="Port number")
     args = parser.parse_args()
     port = args.port_number
-
-    channel = grpc.insecure_channel(f"localhost:{port-10000}")
+    ip = os.popen("ipconfig getifaddr en0").read().strip()
+    channel = grpc.insecure_channel(f"{ip}:{port-10000}")
     stub = raft_pb2_grpc.RaftServiceStub(channel)
     server = grpc.server(futures.ThreadPoolExecutor(max_workers=10))
-    lms_pb2_grpc.add_LMSServicer_to_server(LMSService(port, stub), server)
+    lms_pb2_grpc.add_LMSServicer_to_server(LMSService(f"{ip}:{port}", stub), server)
     server.add_insecure_port(f"[::]:{port}")
     server.start()
     print(f"LMS gRPC Server is running on port {port}")

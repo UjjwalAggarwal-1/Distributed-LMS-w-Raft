@@ -9,8 +9,8 @@ import lms_pb2_grpc
 
 
 class LMSClient:
-    def __init__(self, port):
-        channel = grpc.insecure_channel(f"localhost:{port}")
+    def __init__(self, address):
+        channel = grpc.insecure_channel(f"{address}")
         self.stub = lms_pb2_grpc.LMSStub(channel)
 
     def login(self, username, password):

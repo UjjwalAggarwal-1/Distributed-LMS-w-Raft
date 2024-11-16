@@ -21,7 +21,7 @@ message VoteResponse {
 
 message AppendEntriesRequest {
     int32 term = 1;            // Leader's term
-    int32 leaderId = 2;        // ID of the leader
+    string leaderId = 2;        // ID of the leader
     double prevLogIndex = 3;    // Index of the log entry immediately preceding new ones
     // int32 prevLogTerm = 4;     // Term of prevLogIndex entry
     repeated string entries = 5; // New log entries to be appended

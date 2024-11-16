@@ -25,15 +25,16 @@ def print_with_time(*args):
 
 
 class RaftNode(raft_pb2_grpc.RaftServiceServicer):
-    def __init__(self, node_id, port, peers):
+    def __init__(self, node_id, addr, peers):
         self.node_id = node_id
-        self.port = port
+        self.addr = addr
         self.peers = peers  # List of other node addresses (IP:Port)
         self.current_term = 0
         self.voted_for = None
         self.state = "follower"
-        self.leader_id = None
+        self.leader_id = None #ip:port
         self.last_heartbeat = time.time()
+        self.port = addr.split(":")[1]
 
         # logs...
         self.log_file = f"logs/{self.node_id}.txt"
@@ -49,9 +50,10 @@ class RaftNode(raft_pb2_grpc.RaftServiceServicer):
         self.log_sync_index = get_last_log_timestamp(self.log_file)
 
     def GetLeader(self, request, context):
-        leader_address = f"localhost:{self.leader_id+10000}"
+        ip, port = self.leader_id.split(":")
         if self.state == "leader":
-            leader_address = f"localhost:{self.port+10000}"
+            ip, port = self.addr.split(":")
+        leader_address = f"{ip}:{int(port)+10000}"
         return raft_pb2.GetLeaderResponse(leader_address=leader_address)
 
     def RedirectWrite(self, request, context):
@@ -116,6 +118,7 @@ class RaftNode(raft_pb2_grpc.RaftServiceServicer):
 
                 # If the leader's term is higher, update the follower's term
                 if request.term > self.current_term:
+                    print("node is out of sync with leader")
                     self.current_term = request.term
                     self.state = "follower"
                     self.voted_for = None
@@ -145,8 +148,6 @@ class RaftNode(raft_pb2_grpc.RaftServiceServicer):
                     response.missingIndex = last_log_index_
                     return response
 
-                print("accepted append entries")
-
                 # Append the log entries if they are valid (in sequence)
                 print_with_time(f"Appending logs to {self.log_file}")
                 decoded_logs = [
@@ -155,9 +156,9 @@ class RaftNode(raft_pb2_grpc.RaftServiceServicer):
                 append_logs_to_file(self.log_file, decoded_logs)
 
                 response.success = True
+                return response
             except Exception as e:
                 print(e)
-        return response
 
     def is_log_up_to_date(self, request):
         # Check if candidate's log is at least as up-to-date as receiver's log
@@ -205,7 +206,7 @@ class RaftClient:
                             # print(f"{logs_=}, {type(logs_)=}")
                             request = raft_pb2.AppendEntriesRequest(
                                 term=self.node.current_term,
-                                leaderId=self.node.node_id,
+                                leaderId=self.node.addr,
                                 prevLogIndex=float(self.node.log_sync_index),
                                 # prevLogTerm=last_term_,
                                 entries=logs_,
@@ -219,9 +220,6 @@ class RaftClient:
                                     with self.node.lock:
                                         self.node.state = "follower"
                                         return
-                                print_with_time(
-                                    f"{peer} did not sync logs successfully"
-                                )
                                 self.handle_log_sync(peer, response.missingIndex)
                             else:
                                 replication_count += 1
@@ -235,7 +233,7 @@ class RaftClient:
                         f"Logs updated successfully for {replication_count} nodes"
                     )
                     with self.node.lock:
-                        self.node.log_sync_index = last_index_
+                        self.node.log_sync_index = get_last_log_timestamp(self.node.log_file)
 
                 time.sleep(HEARTBEAT_INTERVAL)
 
@@ -299,7 +297,7 @@ class RaftClient:
             with self.node.lock:
                 # Ensure we haven't stepped down in the meantime
                 if self.node.leader_id is None:
-                    self.node.leader_id = self.node.port
+                    self.node.leader_id = self.node.addr
                     self.node.state = "leader"
                     print_with_time(
                         f"Node {self.node.node_id} became the leader for term {self.node.current_term}, votes received = {votes}"
@@ -324,7 +322,7 @@ class RaftClient:
 
                 request = raft_pb2.AppendEntriesRequest(
                     term=self.node.current_term,
-                    leaderId=self.node.node_id,
+                    leaderId=self.node.addr,
                     prevLogIndex=-1,
                     # prevLogTerm=last_term_,
                     entries=logs_,
@@ -345,8 +343,8 @@ class RaftClient:
 
 
 # Start the gRPC server and client threads
-def start_node(node_id, port, peers):
-    node = RaftNode(node_id, port, peers)
+def start_node(node_id, addr, peers):
+    node = RaftNode(node_id, addr, peers)
     client = RaftClient(node)
 
     server_thread = threading.Thread(target=run_server, args=(node,))
@@ -374,23 +372,23 @@ def run_server(node):
 
 if __name__ == "__main__":
     peers = [
-        "localhost:40051", # server -> 50051
-        "localhost:40052", # server -> 50052 (+10000)
-        "localhost:40053",
+        "172.17.22.116:40051", # server -> 50051
+        "172.17.22.116:40052", # server -> 50052 (+10000)
+        "172.17.22.116:40053",
+        # "172.17.29.148:40051",
     ]  # all nodes including the myself
 
     parser = argparse.ArgumentParser(
-        description="Input Node ID and Port number for node"
+        description="Input Port number for node"
     )
     # parser.add_argument('node_id', type=int, help="Node ID")
     parser.add_argument("port_number", type=int, help="Port number")
     args = parser.parse_args()
     port = args.port_number
 
-    if f"localhost:{port}" in peers:
-        peers.remove(f"localhost:{port}")
-    if f"127.0.0.1:{port}" in peers:
-        peers.remove(f"127.0.0.1:{port}")
+    ip = os.popen("ipconfig getifaddr en0").read().strip()
+    if f"{ip}:{port}" in peers:
+        peers.remove(f"{ip}:{port}")
 
     # taking node id to be the same as the port for now
-    start_node(node_id=port, port=port, peers=peers)
+    start_node(node_id=port, addr=f"{ip}:{port}", peers=peers)
