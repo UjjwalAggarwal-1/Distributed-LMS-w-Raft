@@ -133,6 +133,12 @@ python ./server/initialize_content.py
 
 This will also insert some dummy course materials into the SQLite database.
 
+### 5. Make a logs directory
+
+```bash
+mkdir logs
+```
+
 
 ## Running the Project
 

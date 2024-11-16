@@ -147,7 +147,7 @@ class LMSService(lms_pb2_grpc.LMSServicer):
         try:
             print("Connecting to Tutoring Server...")
 
-            # Connect to the Tutoring Server on port 50052
+            # Connect to the Tutoring Server on port 60052
             channel = grpc.insecure_channel('localhost:60052')
             stub = tutoring_pb2_grpc.TutoringServiceStub(channel)
 
@@ -202,6 +202,10 @@ class LMSService(lms_pb2_grpc.LMSServicer):
 
         cursor.execute("DELETE FROM sessions WHERE token = ?",
                        (request.token,))
+        try:
+            self.add_to_logs(f"DELETE FROM sessions WHERE token = {request.token}")
+        except Exception as e:
+            print(e)
         conn.commit()
         cursor.close()
         conn.close()
@@ -244,6 +248,11 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             (grade, assignment_id),
         )
 
+        try:
+            self.add_to_logs(f"UPDATE assignments SET grade={grade} WHERE assignment_id={assignment_id}")
+        except Exception as e:
+            print(e)
+        
         return lms_pb2.PostResponse(status=res)
 
     @check_leadership
@@ -287,6 +296,10 @@ class LMSService(lms_pb2_grpc.LMSServicer):
                 """,
                 (user_id, course_id, content, ai_response, llm_id[0]),
             )
+            try:
+                self.add_to_logs(f"INSERT INTO queries (user_id, course_id, content, reply, replied_at, replier_id) VALUES ({user_id}, {course_id}, {content}, {ai_response}, CURRENT_TIMESTAMP, {llm_id[0]})")
+            except Exception as e:
+                print(e)
         else:
             # Save a regular query without a reply
             cursor.execute(
@@ -296,7 +309,10 @@ class LMSService(lms_pb2_grpc.LMSServicer):
                 """,
                 (user_id, course_id, content),
             )
-
+            try:
+                self.add_to_logs(f"INSERT INTO queries (user_id, course_id, content) VALUES ({user_id}, {course_id}, {content})")
+            except Exception as e:
+                print(e)
         conn.commit()
         cursor.close()
         conn.close()
@@ -322,6 +338,11 @@ class LMSService(lms_pb2_grpc.LMSServicer):
             """,
             (user_id, reply, query_id),
         )
+
+        try:
+            self.add_to_logs(f"UPDATE queries set replier_id={user_id}, reply={reply}, replied_at=CURRENT_TIMESTAMP WHERE query_id = {query_id}")
+        except Exception as e:
+            print(e)
 
         conn.commit()
         cursor.close()

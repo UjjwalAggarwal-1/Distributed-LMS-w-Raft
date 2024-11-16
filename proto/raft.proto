@@ -19,13 +19,6 @@ message VoteResponse {
   int32 term = 2;
 }
 
-message LogEntry {
-    //int64 index = 1;       // the time in my implementation
-    //int32 term = 2;        // Term of the entry
-    //string command = 3;    // Command associated with the log entry
-    string line = 1;
-}
-
 message AppendEntriesRequest {
     int32 term = 1;            // Leader's term
     int32 leaderId = 2;        // ID of the leader
